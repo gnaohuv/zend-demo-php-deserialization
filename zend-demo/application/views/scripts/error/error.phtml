@@ -1,0 +1,7 @@
+<h1>Error occurred</h1>
+<p><?php echo $this->message ?></p>
+
+<?php if (isset($this->exception)): ?>
+<pre><?php echo $this->exception->getMessage(); ?></pre>
+<?php endif; ?>
+
