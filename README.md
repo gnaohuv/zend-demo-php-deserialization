@@ -90,5 +90,33 @@ phpggc zendframework/rce4 'system("start calc");' | base64
 
 Payload được tạo ra dưới dạng base64 như sau: 
 
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Phpggc_payload.png?raw=true" alt="Phpggc_payload" width="800"/>
+    <p align="center"><em>Payload được tạo bằng phpggc</em></p>
+</p>
 
+#### 4.4.2. Nhập payload khai thác
+Nhập payload khai thác vào index webpage trên Zend Framework đã được giới thiệu trong phần 4.3.
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+Vì hàm `unserialize()` giải tuần tự hóa trực tiếp dữ liệu từ trường `username`, tiến hành chèn trực tiếp payload vào trường này: 
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_payload.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+
+
+Khi payload chạy thành công, lệnh chèn vào được thực thi, ở đây là mở calculator
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_calc.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+## 5. Phân tích gadget chain
+### 5.1.
+### 5.2.
 
