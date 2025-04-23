@@ -26,27 +26,69 @@ Các lỗ hổng này thường rất nguy hiểm do chúng khó bị phát hi�
 
 Trước phiên bản `1.12.21`, `Zend Framework` tồn tại các lớp như:
 
-`Zend_Log`: hỗ trợ ghi log linh hoạt
+`Zend_Log`: hỗ trợ ghi log linh hoạt.
 
-`Zend_Mail`: xử lý gửi email
+`Zend_Mail`: xử lý gửi email.
 
-`Zend_Config`: quản lý cấu hình theo file hoặc mảng
+`Zend_Config`: quản lý cấu hình theo file hoặc mảng.
 
-`Zend_View` và `Zend_Layout`: hỗ trợ tạo giao diện người dùng động
+`Zend_View` và `Zend_Layout`: hỗ trợ tạo giao diện người dùng động.
 
 Các lớp này có thể bị xâu chuỗi lại với nhau nhờ các phương thức `__destruct()`, `__call()` và `__toString()` để tạo thành một gadget chain nguy hiểm, cho phép kẻ tấn công lợi dụng để thực thi lệnh hệ thống thông qua `unserialize`.
 
 Zend sau đó đã phát hành bản vá trong phiên bản `1.12.21`, loại bỏ hoặc điều chỉnh các hành vi nguy hiểm trong các phương thức ma thuật, đồng thời khuyến cáo không nên `unserialize` dữ liệu không đáng tin cậy.
 ## 4. Xây dựng webpage chứa lỗ hổng
 ### 4.1. Mục tiêu
-Xây dựng một webpage sử dụng `Zend Framework` chứa đoạn mã có đối tượng được `unserialize()` mà không qua xác thực. Sau đó tiến hành khai thác lỗ hổng `Insecure Unserialization` trên trang web này sử dụng payload tạo từ công cụ `phpggc`
+Xây dựng một webpage sử dụng `Zend Framework` chứa đoạn mã có đối tượng được `unserialize()` mà không qua xác thực. Sau đó tiến hành khai thác lỗ hổng `Insecure Unserialization` trên trang web này sử dụng payload tạo từ công cụ `phpggc`.
 ### 4.2. Công nghệ sử dụng
-- Language: `PHP 7.2.3` 
-- Framework: `ZendFramework 1.12.20`
-- Server: `Apache 2.4.46 (XAMPP 8.2.4)`
-- Debugger-extension: `Xdebug 3.1.6`
-- IDE: `PHPStorm 2024.3.1.1`
-- Environment: `Localhost`
+- Language: `PHP 7.2.3` .
+- Framework: `ZendFramework 1.12.20`.
+- Server: `Apache 2.4.46 (XAMPP 8.2.4)`.
+- Debugger-extension: `Xdebug 3.1.6`.
+- IDE: `PHPStorm 2024.3.1.1`.
+- Environment: `Localhost`.
 ### 4.3. Đoạn mã gây ra lỗ hổng
+Để nghiên cứu và mô phỏng lỗ hổng `PHP Insecure Unserialization` trên `Zend Framework`, báo cáo xây dựng một đoạn mã thử nghiệm đơn giản như sau:
+```php
+<?php
+
+class IndexController extends Zend_Controller_Action
+{
+    public function indexAction()
+    {
+        if ($this->getRequest()->isPost()) {
+            $username = $this->getRequest()->getPost('username');
+            $password = $this->getRequest()->getPost('password');
+
+            $data = base64_decode($username);
+            @unserialize($data); 
+        }
+
+        // Hiển thị form HTML...
+    }
+}
+```
+*📌 Lưu ý: Đây là một đoạn mã giả lập, có thể không xuất hiện trong ứng dụng thực tế. Mục đích là tái hiện một trang web cho phép nhập đầu vào nguy hiểm dẫn dến việc giải tuần tự dữ liệu không đáng tin cậy — từ đó phân tích sự hoạt động của gadget chain khi được thực thi.*
+
+- Ứng dụng nhận dữ liệu username từ người dùng thông qua phương thức POST.
+
+- Dữ liệu này được `base64_decode()` rồi truyền trực tiếp vào `unserialize()` mà không qua bất kỳ kiểm tra hay xác thực nào.
+
+- Dòng `@unserialize($data);` chính là điểm dễ bị tấn công, đặc biệt nếu dữ liệu gửi đến là một chuỗi gadget chain được xây dựng phục vụ mục đích khai thác.
 ### 4.4. Quá trình khai thác
 #### 4.4.1. Tạo payload
+Để tạo payload khai thác lỗ hổng trên trang web được dựng ở trên, sử dụng công cụ [`Phpggc`](https://github.com/ambionics/phpggc). Công cụ này hỗ trợ sẵn rất nhiều `gadget chains` được trích xuất từ các thư viện và framework phổ biến như `Zend Framework`, `Laravel`, `Monolog`, `SwiftMailer`,…
+Sử dụng lệnh sau để tạo payload từ gadget chain để khai thác lỗ hổng:
+```bash
+phpggc zendframework/rce4 'system("start calc");' | base64
+```
+- `zendframework/rce4`: Tên của `gadget chain` đã được định nghĩa trong phpggc, thực nghiệm sử dụng rce4 trên Zend Framework.
+
+- `system("start calc")`: Lệnh hệ thống sẽ được thực thi nếu khai thác thành công, ở đây là lệnh khởi động calculator trên Windows .
+
+- `base64`: Mã hóa đầu ra để phù hợp với xử lý đầu vào trong đoạn mã thử nghiệm (giải mã bằng base64_decode trước khi unserialize).
+
+Payload được tạo ra dưới dạng base64 như sau: 
+
+
+
