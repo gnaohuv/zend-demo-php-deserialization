@@ -266,15 +266,66 @@ Tổng quát quá trình thực thi:
 
 - Chuỗi thực hiện:
 ```
-  Zend_Log::__destruct()
-          └── Zend_Log_Writer_Mail::shutdown()
-              └── Zend_Layout::render()
-                  └── Zend_Filter_Inflector::filter($_layout)
-                        └── Zend_Filter_Callback::filter()
-                              └── create_function('', ')}{system("start calc");/*')
-                                    └── system("start calc")
+unserialize()
+    └──Zend_Log::__destruct()
+            └── Zend_Log_Writer_Mail::shutdown()
+                  └── Zend_Layout::render()
+                          └── Zend_Filter_Inflector::filter($_layout)
+                                    └── Zend_Filter_Callback::filter()
+                                                  └── create_function('', ')}{system("start calc");/*')
+                                                            └── system("start calc")
 ```
 
 ### 5.3. Debbug trực tiếp trên ứng dụng
+#### 🧩 Nhập Payload
+Payload được nhập sẽ được giải tuần tự thông qua hàm `unserialize()`.
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_unserialize.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+#### 🧩 Gọi đến Zend_Log::__destruct()
+- Như đã đề cập ở trên, sau khi giải tuần tự, `Zend_Log` bị hủy, `destruct()` được gọi.
+
+- Đặt break point tại hàm destruct() của class Zend_Log tại library/Zend/Log.php.
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_destruct.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+- Trong hàm destruct(),  đối tượng $writer gọi đến method shutdown()
+
+    -  `$writer` là đối tường được khởi tạo từ class `Zend_Log_Writer_Mail`.
+  
+#### 🧩 Gọi đến `Zend_Log_Writer_Mail::shutdown()`
+- Hàm `shutdown()` định nghĩa tại class `Zend_Log_Writer_Mail` được extend từ `Zend_Log_Writer_Abstract`.
+
+- Tại hàm `shutdown()` biến _mail sẽ thực hiện `setBodyHtml` cho email với tham số `_layout->render()`,
+    - Trong đó `_layout` trong gadget chain là biến được khởi tạo từ `Zend_Layout` với giá trị `‘){}phpinfo();exit();/*’`. Giá trị này được khởi tạo sau khi payload được `unserialize`.
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_setBodyHtml.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+  
+#### 🧩 Gọi đến Zend_Layout::render()
+- Tiếp tục debug vào render(), biến $name lúc đầu được khởi tạo với giá trị null, sau đó biến này được truyền vào giá trị thông qua gọi `$name = $this->getLayout();`
+
+- Hàm getLayout() trả về giá trị lưu trong biến _layout, lúc này đang là `‘){}phpinfo();exit();/*’`, tức là sau khi thoát khỏi getLayout(), biến `name` cũng được gán với giá trị này.
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_getLayout.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_%24name.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+- Với giá trị biến _inflector là một đối tượng Zend_Filter_Callback
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
+
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" alt="Phpggc_payload" width="800"/>
+</p>
 
 
