@@ -1,4 +1,4 @@
-# Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization
+# 🐛Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization🐛
 ## Mục Lục
 
 - [1. Giới thiệu chung](#1-giới-thiệu-chung)
@@ -15,13 +15,13 @@
   - [5.3. Debug trực tiếp trên ứng dụng](#53-debug-trực-tiếp-trên-ứng-dụng)
 - [6. Một số biện pháp phòng tránh lỗ hổng](#6-một-số-biện-pháp-phòng-tránh-lỗ-hổng)
 
-## 🧠1. Giới thiệu chung
+## 1. Giới thiệu chung
 `Insecure Unserialization` hay `Object Injection` là một lỗ hổng phổ biến trong PHP, xảy ra khi dữ liệu không đáng tin cậy được truyền trực tiếp vào hàm `unserialize()` mà không có kiểm soát hoặc xác thực. Khi đó, kẻ tấn công có thể chèn vào chuỗi dữ liệu các đối tượng được thiết kế đặc biệt `(gadget)` để khai thác các `magic method` như `__wakeup()` hay `__destruct()`, từ đó dẫn đến thực thi mã tùy ý `(RCE – Remote Code Execution)`.
 
 Một ví dụ điển hình là lỗ hổng từng tồn tại trong `Zend Framework` (trước phiên bản `1.12.21`), nơi mà một số class trong framework có thể bị lợi dụng để xây dựng `gadget chain`, tạo điều kiện cho tấn công khi dữ liệu đầu vào bị `unserialize` một cách không an toàn.
 
 Mục tiêu của project này là mô phỏng lại quá trình khai thác thông qua việc xây dựng một webpage mẫu chứa lỗ hổng trên `Zend Framework`, tạo payload bằng công cụ `phpggc`, debug theo luồng `gadget chain`, và cuối cùng là phân tích cũng như đưa ra một số cách phòng chống hiệu quả lỗ hổng này trong thực tế phát triển phần mềm.
-## 🐛2. Tổng quan về lỗ hổng Insecure Unserialization trên PHP
+## 2. Tổng quan về lỗ hổng Insecure Unserialization trên PHP
 Trong PHP, `serialize()` và `unserialize()` là hai hàm dùng để tuần tự hóa và khôi phục các đối tượng hoặc cấu trúc dữ liệu phức tạp. Tuy nhiên, nếu dữ liệu được truyền vào `unserialize()` đến từ nguồn không tin cậy, không được kiểm soát hay xác thực phù hợp (như đầu vào từ người dùng), nó có thể bị lợi dụng để thực hiện hành vi tấn công.
 
 Lỗ hổng `nsecure Unserialization` xảy ra khi dữ liệu đã bị kẻ tấn công kiểm soát được `unserialize` mà không có kiểm tra nghiêm ngặt. Bằng cách tạo ra một chuỗi `(chain)` tuần tự hóa chứa các đối tượng đặc biệt `(gadget)`, kẻ tấn công có thể lợi dụng các phương thức "ma thuật" - `magic method` trong PHP như: `__construct()`, `__destruct()`, `__wakeup()`, `__toString()`,...
