@@ -270,7 +270,7 @@ unserialize()
     └──Zend_Log::__destruct()
             └── Zend_Log_Writer_Mail::shutdown()
                   └── Zend_Layout::render()
-                          └── Zend_Filter_Inflector::filter($_layout)
+                          └── Zend_Filter_Inflector::filter()
                                     └── Zend_Filter_Callback::filter()
                                                   └── create_function('', ')}{system("start calc");/*')
                                                             └── system("start calc")
@@ -298,7 +298,9 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
   
 #### 🧩 Gọi đến `Zend_Log_Writer_Mail::shutdown()`
 - Hàm `shutdown()` định nghĩa tại class `Zend_Log_Writer_Mail` được extend từ `Zend_Log_Writer_Abstract`.
+  
 - Trong hàm `shutdown()` để tránh chương trình đi vào nhánh `if (empty($this->_eventsToMail))` và kết thúc hàm này khi chưa đạt được mục đích mong muốn, tại chain trong phpggc, biến `$_eventsToMail` được khởi tạo là một mảng không rỗng (`[1]`).
+  
 ```php
  [new \Zend_Log_Writer_Mail(
                  [1],
@@ -310,7 +312,8 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
                      $parameters['code']
                  )
              )]
-``` 
+```
+
 - Sau đó, tại hàm `shutdown()` biến _mail sẽ thực hiện `setBodyHtml` cho email với tham số `_layout->render()`,
     - Trong đó `_layout` trong gadget chain là biến được khởi tạo từ `Zend_Layout` với giá trị `‘){}phpinfo();exit();/*’`. Giá trị này được khởi tạo sau khi payload được `unserialize`.
 
@@ -331,13 +334,35 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_%24name.png?raw=true" alt="Phpggc_payload" width="800"/>
 </p>
 
-- Với giá trị biến _inflector là một đối tượng Zend_Filter_Callback
-<p align="center">
-<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter.png?raw=true" alt="Phpggc_payload" width="800"/>
-</p>
+- Giá trị biến _inflector là một đối tượng của Zend_Filter_Callback, nó gọi đến `filter()` của `Zend_Filter_Inflector`.
+    - Giá trị truyền vào `filter()` là một mảng `['script' => $name]` với key là `"script"` và value là giá trị trong biến `$name`
 
 <p align="center">
-<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" alt="Phpggc_payload" width="800"/>
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter.png?raw=true" width="800"/>
 </p>
+
+#### 🧩 Gọi đến Zend_Filter_Inflector::filter()
+- Giá trị truyền vào sau đó được lưu trong biến `$source`.
+  
+- Sau khi sử lý trong hàm `filter()` của class Zend_Filter_Inflector, giá trị ứng với key `"script"` của biến `$source` được gán cho biến `$processedPart`, lúc này giá trị của $processedPart sẽ là `){}system("start calc");/*`
+  
+- Sau đó từ `$ruleFilter` gọi đến `filter($processedPart)`, mà lúc này $ruleFilter đang là một đối tượng của Zend_Filter_Callback, vì vậy Zend_Filter_Callback::filter() được gọi với giá trị đầu vào là biến `$processedPart` (hay lúc này đang có giá trị là `){}system("start calc");/*`)
+
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" width="800"/>
+</p>
+
+#### 🧩 Gọi đến Zend_Filter_Callback::filter()
+- Tại đây, "`){}system("start calc");/*`" được gán với `$value`
+  
+- Giá trị trong `$value` sau đó được chèn vào đầu mảng `options` thông qua hàm `array_unshift()`
+  
+- Cuối cùng hàm return `call_user_func_array($this->_callback, $options)` được gọi, với:
+    - $this->_callback được khởi tạo trong gadget chain với giá trị là "`create_function`"
+    - $options là mảng giá trị chứa payload : `){}system("start calc");/*`
+  
+  - Với các giá trị như trên đoạn code sẽ thực hiện chạy hàm create_function() với tham số là `){}system("start calc");/*`. Kết quả là một function sẽ được tạo và lệnh khởi động calculator được gọi sẽ được gọi, dấu /* thực hiện comment các phần còn lại của code. Kết quả đoạn code được truyền vào được thực thi:
+
+
 
 
