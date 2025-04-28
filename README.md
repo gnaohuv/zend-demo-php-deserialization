@@ -99,19 +99,22 @@ Payload được tạo ra dưới dạng base64 như sau:
 Nhập payload khai thác vào index webpage trên Zend Framework đã được giới thiệu trong phần 4.3.
 
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index.png?raw=true" width="800"/>
+    <p align="center"><em>Giao diện index Webpage</em></p>
 </p>
 
 Vì hàm `unserialize()` giải tuần tự hóa trực tiếp dữ liệu từ trường `username`, tiến hành chèn trực tiếp payload vào trường này: 
 
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_payload.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_payload.png?raw=true"  width="800"/>
+    <p align="center"><em>Nhập payload</em></p>
 </p>
 
-Khi payload chạy thành công, lệnh chèn vào được thực thi, ở đây là mở calculator
+Khi payload chạy thành công, lệnh chèn vào được thực thi, ở đây là mở `calculator`
 
 <p align="center">
   <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Zend_index_calc.png?raw=true" alt="Phpggc_payload" width="800"/>
+    <p align="center"><em>Payload thực thi thành công, calculator được khởi động</em></p>
 </p>
 
 ## 5. Phân tích Gadget chain
@@ -249,18 +252,18 @@ O:8:"Zend_Log":1:{s:11:"*_writers";a:1:{i:0;O:20:"Zend_Log_Writer_Mail":5:{s:16:
 ```
 
 Cấu trúc của một chuỗi serialized object gồm:
-- O:<length>:"ClassName":<property_count>:{...} – đại diện cho một đối tượng.
-- s:<length>:"property_name" – tên thuộc tính.
-- a:<size>:{...} – một mảng (array).
-- i:<int> – số nguyên.
-- s:<length>:"string" – chuỗi.
-- N – null.
-- b:0 hoặc b:1 – boolean false hoặc true.
+- `O:<length>:"ClassName":<property_count>:{...}` – đại diện cho một đối tượng.
+- `s:<length>:"property_name"` – tên thuộc tính.
+- `a:<size>:{...}` – một mảng (array).
+- `i:<int>` – số nguyên.
+- `s:<length>:"string"` – chuỗi.
+- `N` – null.
+- `b:0 hoặc b:1` – boolean false hoặc true.
 
 Tổng quát quá trình thực thi:
-- Khi đối tượng Zend_Log bị gọi hủy (qua __destruct() hoặc một thao tác log), nó sẽ gọi writer là Zend_Log_Writer_Mail.
+- Khi đối tượng `Zend_Log` bị gọi hủy (qua `__destruct()`), nó sẽ gọi writer là đối tượng của `Zend_Log_Writer_Mail`.
   
-- Writer này lại xử lý layout để format nội dung email, và thông qua chuỗi phụ thuộc (Zend_Layout → Zend_Filter_Inflector → Zend_Filter_Callback) sẽ gọi create_function() chứa mã độc.
+- Writer này lại xử lý layout để format nội dung email, và thông qua chuỗi phụ thuộc (`Zend_Layout → Zend_Filter_Inflector → Zend_Filter_Callback`) sẽ gọi `create_function()` chứa lệnh muốn thực thi.
 
 - Nếu mã này là system("start calc"), máy chủ sẽ thực thi lệnh mở calculator.
 
@@ -270,7 +273,7 @@ unserialize()
     └──Zend_Log::__destruct()
             └── Zend_Log_Writer_Mail::shutdown()
                   └── Zend_Layout::render()
-                          └── Zend_Filter_Inflector::filter()
+                          └── Zend_Filter_Inflector::filter($_layout)
                                     └── Zend_Filter_Callback::filter()
                                                   └── create_function('', ')}{system("start calc");/*')
                                                             └── system("start calc")
