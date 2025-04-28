@@ -284,22 +284,34 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 </p>
 
 #### 🧩 Gọi đến Zend_Log::__destruct()
-- Như đã đề cập ở trên, sau khi giải tuần tự, `Zend_Log` bị hủy, `destruct()` được gọi.
+- Như đã đề cập ở trên, sau khi giải tuần tự, `Zend_Log` bị hủy, `destruct()` của class được gọi.
 
-- Đặt break point tại hàm destruct() của class Zend_Log tại library/Zend/Log.php.
+- Đặt break point tại hàm `destruct()` của class `Zend_Log` tại `library/Zend/Log.php`.
 
 <p align="center">
   <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_destruct.png?raw=true" alt="Phpggc_payload" width="800"/>
 </p>
 
-- Trong hàm destruct(),  đối tượng $writer gọi đến method shutdown()
+- Trong hàm destruct(),  đối tượng `$writer` gọi đến method `shutdown()`
 
-    -  `$writer` là đối tường được khởi tạo từ class `Zend_Log_Writer_Mail`.
+    - Đối chiếu với gadget chain, `$writer` là đối tượng được khởi tạo từ class `Zend_Log_Writer_Mail`.
   
 #### 🧩 Gọi đến `Zend_Log_Writer_Mail::shutdown()`
 - Hàm `shutdown()` định nghĩa tại class `Zend_Log_Writer_Mail` được extend từ `Zend_Log_Writer_Abstract`.
-
-- Tại hàm `shutdown()` biến _mail sẽ thực hiện `setBodyHtml` cho email với tham số `_layout->render()`,
+- Trong hàm `shutdown()` để tránh chương trình đi vào nhánh `if (empty($this->_eventsToMail))` và kết thúc hàm này khi chưa đạt được mục đích mong muốn, tại chain trong phpggc, biến `$_eventsToMail` được khởi tạo là một mảng không rỗng (`[1]`).
+```php
+ [new \Zend_Log_Writer_Mail(
+                 [1],
+                 [],
+                 new \Zend_Mail,
+                 new \Zend_Layout(
+                     new \Zend_Filter_Inflector(),
+                     true,
+                     $parameters['code']
+                 )
+             )]
+``` 
+- Sau đó, tại hàm `shutdown()` biến _mail sẽ thực hiện `setBodyHtml` cho email với tham số `_layout->render()`,
     - Trong đó `_layout` trong gadget chain là biến được khởi tạo từ `Zend_Layout` với giá trị `‘){}phpinfo();exit();/*’`. Giá trị này được khởi tạo sau khi payload được `unserialize`.
 
 <p align="center">
@@ -307,9 +319,9 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 </p>
   
 #### 🧩 Gọi đến Zend_Layout::render()
-- Tiếp tục debug vào render(), biến $name lúc đầu được khởi tạo với giá trị null, sau đó biến này được truyền vào giá trị thông qua gọi `$name = $this->getLayout();`
+- Tiếp tục debug vào `render()`, biến `$name` lúc đầu được khởi tạo với giá trị `null`, sau đó biến này được truyền vào giá trị thông qua gọi `$name = $this->getLayout();`
 
-- Hàm getLayout() trả về giá trị lưu trong biến _layout, lúc này đang là `‘){}phpinfo();exit();/*’`, tức là sau khi thoát khỏi getLayout(), biến `name` cũng được gán với giá trị này.
+- Hàm `getLayout()` trả về giá trị lưu trong biến `_layout`, giá trị của biến này khi đó đang là `‘){}phpinfo();exit();/*’`, tức là sau khi thoát khỏi getLayout(), biến `name` cũng được gán với giá trị này.
 
 <p align="center">
   <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_getLayout.png?raw=true" alt="Phpggc_payload" width="800"/>
