@@ -436,7 +436,7 @@ Lỗ hổng `PHP Insecure Unserialization` xảy ra khi dữ liệu không đán
 - Sử dụng các công cụ tự động như `PHPStan`, `Psalm`, `RIPS` hoặc `SonarQube` để phát hiện các đoạn code nguy hiểm tiềm tàng.
 
 ## Kết Luận
-    Bài báo cáo với đề tài `Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization` đã đưa ra phân tích tổng quát về lỗ hổng này, hướng dẫn xây dựng môi trường để thử nghiệm khai thác lỗ hổng, phân tích `gadget chain` để hiểu rõ luồng hoạt động và cuối cùng là đưa ra một số biện pháp phòng tránh lỗ hổng `PHP Insercure Unserialization`
+Bài báo cáo với đề tài `Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization` đã đưa ra phân tích tổng quát về lỗ hổng này, hướng dẫn xây dựng môi trường để thử nghiệm khai thác lỗ hổng, phân tích `gadget chain` để hiểu rõ luồng hoạt động và cuối cùng là đưa ra một số biện pháp phòng tránh lỗ hổng `PHP Insercure Unserialization`
 
 
 
