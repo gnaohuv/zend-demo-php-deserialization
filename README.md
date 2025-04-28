@@ -305,6 +305,11 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 - Hàm `shutdown()` định nghĩa tại class `Zend_Log_Writer_Mail` được extend từ `Zend_Log_Writer_Abstract`.
   
 - Trong hàm `shutdown()` để tránh chương trình đi vào nhánh `if (empty($this->_eventsToMail))` và kết thúc hàm này khi chưa đạt được mục đích mong muốn, tại chain trong phpggc, biến `$_eventsToMail` được khởi tạo là một mảng không rỗng (`[1]`).
+
+<p align="center">
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Shutdown_eventToMail.png?raw=true"  width="800"/>
+    <p align="center"><em>if (empty($this->_eventsToMail))</em></p>
+</p>
   
 ```php
  [new \Zend_Log_Writer_Mail(
@@ -353,9 +358,14 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 #### 🧩 Gọi đến Zend_Filter_Inflector::filter()
 - Giá trị truyền vào sau đó được lưu trong biến `$source`.
   
-- Sau khi sử lý trong hàm `filter()` của class Zend_Filter_Inflector, giá trị ứng với key `"script"` của biến `$source` được gán cho biến `$processedPart`, lúc này giá trị của $processedPart sẽ là `){}system("start calc");/*`
+- Sau khi sử lý trong hàm `filter()` của class `Zend_Filter_Inflector`, giá trị ứng với key `"script"` của biến `$source` được gán cho biến `$processedPart`, lúc này giá trị của $processedPart sẽ là `){}system("start calc");/*`
+
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/ProcessPart.png?raw=true" width="800"/>
+    <p align="center"><em>$processedPart</em></p>
+</p>
   
-- Sau đó từ `$ruleFilter` gọi đến `filter($processedPart)`, mà lúc này $ruleFilter đang là một đối tượng của Zend_Filter_Callback, vì vậy Zend_Filter_Callback::filter() được gọi với giá trị đầu vào là biến `$processedPart` (hay lúc này đang có giá trị là `){}system("start calc");/*`)
+- Sau đó từ `$ruleFilter` gọi đến `filter($processedPart)`, mà lúc này `$ruleFilter` đang là một đối tượng của Zend_Filter_Callback, vì vậy `Zend_Filter_Callback::filter()` được gọi với giá trị đầu vào là biến `$processedPart` (hay lúc này đang có giá trị là `){}system("start calc");/*`)
 
 <p align="center">
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" width="800"/>
@@ -373,6 +383,9 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
   
   - Với các giá trị như trên đoạn code sẽ thực hiện chạy hàm `create_function()` với tham số là `){}system("start calc");/*`. Kết quả là một function sẽ được tạo và lệnh khởi động calculator được gọi sẽ được gọi, dấu /* thực hiện comment các phần còn lại của code. Kết quả đoạn code được truyền vào được thực thi:
 
-
+<p align="center">
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Call_user_func.png?raw=true" width="800"/>
+    <p align="center"><em>Hàm call_user_func_array() được gọi </em></p>
+</p>
 
 
