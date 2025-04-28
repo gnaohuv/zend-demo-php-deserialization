@@ -283,7 +283,8 @@ unserialize()
 #### 🧩 Nhập Payload
 Payload được nhập sẽ được giải tuần tự thông qua hàm `unserialize()`.
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_unserialize.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_unserialize.png?raw=true"  width="800"/>
+    <p align="center"><em>Payload được unserialize </em></p>
 </p>
 
 #### 🧩 Gọi đến Zend_Log::__destruct()
@@ -292,7 +293,8 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 - Đặt break point tại hàm `destruct()` của class `Zend_Log` tại `library/Zend/Log.php`.
 
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_destruct.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_destruct.png?raw=true" width="800"/>
+    <p align="center"><em>Mã nguồn __destruct() của Zend_Log</em></p>
 </p>
 
 - Trong hàm destruct(),  đối tượng `$writer` gọi đến method `shutdown()`
@@ -321,7 +323,8 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
     - Trong đó `_layout` trong gadget chain là biến được khởi tạo từ `Zend_Layout` với giá trị `‘){}phpinfo();exit();/*’`. Giá trị này được khởi tạo sau khi payload được `unserialize`.
 
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_setBodyHtml.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_setBodyHtml.png?raw=true" width="800"/>
+    <p align="center"><em>Gọi đến setBodyHtml </em></p>
 </p>
   
 #### 🧩 Gọi đến Zend_Layout::render()
@@ -330,18 +333,21 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 - Hàm `getLayout()` trả về giá trị lưu trong biến `_layout`, giá trị của biến này khi đó đang là `‘){}phpinfo();exit();/*’`, tức là sau khi thoát khỏi getLayout(), biến `name` cũng được gán với giá trị này.
 
 <p align="center">
-  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_getLayout.png?raw=true" alt="Phpggc_payload" width="800"/>
+  <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_getLayout.png?raw=true" width="800"/>
+     <p align="center"><em>Xử lý trong getLayout()</em></p>
 </p>
 
 <p align="center">
-<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_%24name.png?raw=true" alt="Phpggc_payload" width="800"/>
+<img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_%24name.png?raw=true" width="800"/>
+     <p align="center"><em>Giá trị $name sau khi qua getLayout()</em></p>
 </p>
 
-- Giá trị biến _inflector là một đối tượng của Zend_Filter_Callback, nó gọi đến `filter()` của `Zend_Filter_Inflector`.
+- Giá trị biến `_inflector` là một đối tượng của `Zend_Filter_Callback`, nó gọi đến `filter()` của `Zend_Filter_Inflector`.
     - Giá trị truyền vào `filter()` là một mảng `['script' => $name]` với key là `"script"` và value là giá trị trong biến `$name`
 
 <p align="center">
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter.png?raw=true" width="800"/>
+    <p align="center"><em>Đoạn mã gọi đến filter() của Zend_Filter_Inflector </em></p>
 </p>
 
 #### 🧩 Gọi đến Zend_Filter_Inflector::filter()
@@ -353,6 +359,7 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 
 <p align="center">
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" width="800"/>
+    <p align="center"><em>Đoạn mã gọi đến filter() của Zend_Filter_Callback </em></p>
 </p>
 
 #### 🧩 Gọi đến Zend_Filter_Callback::filter()
@@ -361,10 +368,10 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 - Giá trị trong `$value` sau đó được chèn vào đầu mảng `options` thông qua hàm `array_unshift()`
   
 - Cuối cùng hàm return `call_user_func_array($this->_callback, $options)` được gọi, với:
-    - $this->_callback được khởi tạo trong gadget chain với giá trị là "`create_function`"
-    - $options là mảng giá trị chứa payload : `){}system("start calc");/*`
+    - `$this->_callback` được khởi tạo trong gadget chain với giá trị là "`create_function`"
+    - `$options` là mảng giá trị chứa payload : `){}system("start calc");/*`
   
-  - Với các giá trị như trên đoạn code sẽ thực hiện chạy hàm create_function() với tham số là `){}system("start calc");/*`. Kết quả là một function sẽ được tạo và lệnh khởi động calculator được gọi sẽ được gọi, dấu /* thực hiện comment các phần còn lại của code. Kết quả đoạn code được truyền vào được thực thi:
+  - Với các giá trị như trên đoạn code sẽ thực hiện chạy hàm `create_function()` với tham số là `){}system("start calc");/*`. Kết quả là một function sẽ được tạo và lệnh khởi động calculator được gọi sẽ được gọi, dấu /* thực hiện comment các phần còn lại của code. Kết quả đoạn code được truyền vào được thực thi:
 
 
 
