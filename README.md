@@ -1,5 +1,20 @@
 # Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization
 ## Mục Lục
+
+- [1. Giới thiệu chung](#1-giới-thiệu-chung)
+- [2. Tổng quan về lỗ hổng](#2-tổng-quan-về-lỗ-hổng)
+- [3. Tổng quan về Zend Framework](#3-tổng-quan-về-zend-framework)
+- [4. Xây dựng webpage chứa lỗ hổng](#4-xây-dựng-webpage-chứa-lỗ-hổng)
+  - [4.1. Mục tiêu](#41-mục-tiêu)
+  - [4.2. Công nghệ sử dụng](#42-công-nghệ-sử-dụng)
+  - [4.3. Đoạn mã gây ra lỗ hổng](#43-đoạn-mã-gây-ra-lỗ-hổng)
+  - [4.4. Quá trình khai thác](#44-quá-trình-khai-thác)
+- [5. Phân tích Gadget chain](#5-phân-tích-gadget-chain)
+  - [5.1. Khái niệm Gadget chain](#51-khái-niệm-gadget-chain)
+  - [5.2. Phân tích cụ thể](#52-phân-tích-cụ-thể)
+  - [5.3. Debug trực tiếp trên ứng dụng](#53-debug-trực-tiếp-trên-ứng-dụng)
+- [6. Một số biện pháp phòng tránh lỗ hổng](#6-một-số-biện-pháp-phòng-tránh-lỗ-hổng)
+
 ## 🧠1. Giới thiệu chung
 `Insecure Unserialization` hay `Object Injection` là một lỗ hổng phổ biến trong PHP, xảy ra khi dữ liệu không đáng tin cậy được truyền trực tiếp vào hàm `unserialize()` mà không có kiểm soát hoặc xác thực. Khi đó, kẻ tấn công có thể chèn vào chuỗi dữ liệu các đối tượng được thiết kế đặc biệt `(gadget)` để khai thác các `magic method` như `__wakeup()` hay `__destruct()`, từ đó dẫn đến thực thi mã tùy ý `(RCE – Remote Code Execution)`.
 
@@ -265,7 +280,7 @@ Tổng quát quá trình thực thi:
   
 - Writer này lại xử lý layout để format nội dung email, và thông qua chuỗi phụ thuộc (`Zend_Layout → Zend_Filter_Inflector → Zend_Filter_Callback`) sẽ gọi `create_function()` chứa lệnh muốn thực thi.
 
-- Nếu mã này là system("start calc"), máy chủ sẽ thực thi lệnh mở calculator.
+- Nếu mã này là `system("start calc")`, máy chủ sẽ thực thi lệnh mở calculator.
 
 - Chuỗi thực hiện:
 ```
@@ -387,5 +402,41 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Call_user_func.png?raw=true" width="800"/>
     <p align="center"><em>Hàm call_user_func_array() được gọi </em></p>
 </p>
+
+## 6. Một số biện pháp phòng tránh lỗ hổng 
+Lỗ hổng `PHP Insecure Unserialization` xảy ra khi dữ liệu không đáng tin cậy (user-controlled) được `unserialize()` trực tiếp hoặc gián tiếp (ví dụ như thông qua các hàm filter, callback, dynamic class loading...) mà không kiểm tra, không kiểm soát.
+### 6.1. Không `unserialize()` dữ liệu từ nguồn không tin cậy
+- Chỉ thực hiện `unserialize()` với dữ liệu do chính hệ thống tạo ra và lưu trữ, ví dụ như từ database nội bộ.
+  
+- Không bao giờ `unserialize()` dữ liệu lấy trực tiếp từ người dùng (các tham số `GET`, `POST`, `COOKIE`, `file upload`, v.v).
+  
+- Nếu buộc phải nhận dữ liệu bên ngoài, cần có cơ chế kiểm tra chữ ký số (digital signature) để đảm bảo tính toàn vẹn.
+### 6.2. Sử dụng các phương pháp thay thế an toàn hơn
+- Thay vì dùng `serialize()` và `unserialize()`, nên sử dụng các định dạng trao đổi dữ liệu an toàn hơn như JSON (`json_encode()` và `json_decode()`).
+  
+- `JSON` chỉ hỗ trợ kiểu dữ liệu đơn giản (`array`, `string`, `int`...) và không tự động tạo ra đối tượng thực thi, giúp giảm thiểu rủi ro chèn mã độc.
+### 6.3. Giới hạn các class được phép unserialize (PHP 7+)
+- Từ PHP 7 trở lên, `unserialize()` hỗ trợ tham số `allowed_classes`, cho phép chỉ định rõ các class hợp lệ.
+
+- Nếu dữ liệu `unserialize` chứa một class ngoài danh sách này, PHP sẽ chuyển nó thành `__PHP_Incomplete_Class`, tránh kích hoạt mã nguy hiểm.
+
+- Ví dụ:
+  ```php
+  $safeData = unserialize($input, ["allowed_classes" => ["AllowedClass1", "AllowedClass2"]]);
+
+  ```
+### 6.4. Thường xuyên cập nhật framework, PHP và thư viện
+- Các framework như `Zend Framework`, `Symfony`, `Laravel`,... có thể chứa gadget-chain nguy hiểm. Việc cập nhật thường xuyên giúp vá các lỗ hổng đã biết.
+
+- Đồng thời cập nhật phiên bản PHP lên bản ổn định mới nhất để hạn chế các nguy cơ bảo mật trong core PHP.
+
+### 6.5. Rà soát mã nguồn định kỳ để phát hiện các điểm yếu
+- Tổ chức kiểm tra mã nguồn (code audit) để tìm ra các vị trí dùng `unserialize()` và đánh giá độ an toàn.
+
+- Sử dụng các công cụ tự động như `PHPStan`, `Psalm`, `RIPS` hoặc `SonarQube` để phát hiện các đoạn code nguy hiểm tiềm tàng.
+
+## Kết Luận
+    Bài báo cáo với đề tài `Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization` đã đưa ra phân tích tổng quát về lỗ hổng này, hướng dẫn xây dựng môi trường để thử nghiệm khai thác lỗ hổng, phân tích `gadget chain` để hiểu rõ luồng hoạt động và cuối cùng là đưa ra một số biện pháp phòng tránh lỗ hổng `PHP Insercure Unserialization`
+
 
 
