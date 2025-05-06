@@ -1,4 +1,5 @@
-# 🐛Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization🐛
+# 🛠️ Phân tích một gadget chain với lỗ hổng PHP Insercure Unserialization ⛓️
+
 ## Mục Lục
 
 - [1. Giới thiệu chung](#1-giới-thiệu-chung)
@@ -51,7 +52,7 @@ Trước phiên bản `1.12.21`, `Zend Framework` tồn tại các lớp như:
 
 Các lớp này có thể bị xâu chuỗi lại với nhau nhờ các phương thức `__destruct()`, `__call()` và `__toString()` để tạo thành một gadget chain nguy hiểm, cho phép kẻ tấn công lợi dụng để thực thi lệnh hệ thống thông qua `unserialize`.
 
-Zend sau đó đã phát hành bản vá trong phiên bản `1.12.21`, loại bỏ hoặc điều chỉnh các hành vi nguy hiểm trong các phương thức ma thuật, đồng thời khuyến cáo không nên `unserialize` dữ liệu không đáng tin cậy.
+Zend sau đó đã phát hành bản vá trong phiên bản `1.12.21`, loại bỏ hoặc điều chỉnh các hành vi nguy hiểm trong các `magic method`, đồng thời khuyến cáo không nên `unserialize` dữ liệu không đáng tin cậy.
 ## 4. Xây dựng webpage chứa lỗ hổng
 ### 4.1. Mục tiêu
 Xây dựng một webpage sử dụng `Zend Framework` chứa đoạn mã có đối tượng được `unserialize()` mà không qua xác thực. Sau đó tiến hành khai thác lỗ hổng `Insecure Unserialization` trên trang web này sử dụng payload tạo từ công cụ `phpggc`.
@@ -101,7 +102,7 @@ phpggc zendframework/rce4 'system("start calc");' | base64
 
 - `system("start calc")`: Lệnh hệ thống sẽ được thực thi nếu khai thác thành công, ở đây là lệnh khởi động calculator trên Windows .
 
-- `base64`: Mã hóa đầu ra để phù hợp với xử lý đầu vào trong đoạn mã thử nghiệm (giải mã bằng base64_decode trước khi unserialize).
+- `base64`: Mã hóa đầu ra để phù hợp với xử lý đầu vào trong đoạn mã thử nghiệm (giải mã bằng `base64_decode` trước khi `unserialize`).
 
 Payload được tạo ra dưới dạng base64 như sau: 
 
@@ -255,9 +256,9 @@ Trong đó:
 
 - `Zend_Layout`: Lớp này dùng để render layout cho view trong Zend. Thuộc tính `_inflector` được truyền vào là một đối tượng của class `Zend_Filter_Inflector`, và quan trọng nhất là `_layout` – là biến được gán giá trị là mã PHP muốn thực thi thông qua khởi tạo từ `$parameters['code']`.
 
-- `Zend_Filter_Inflector`: Đây là lớp có chức năng tạo chuỗi dựa trên các quy tắc lọc. Nó chứa thuộc tính _rules, trong đó có thể chứa các callback function.
+- `Zend_Filter_Inflector`: Đây là lớp có chức năng tạo chuỗi dựa trên các quy tắc lọc. Nó chứa thuộc tính `_rules`, trong đó có thể chứa các `callback function`.
 
-- `Zend_Filter_Callback`: Là lớp chứa thuộc tính _callback, mặc định gán là "create_function", và _options chứa mảng tham số. Khi callback này được thực thi trong quá trình xử lý inflector, create_function sẽ tạo và thực thi đoạn mã PHP.
+- `Zend_Filter_Callback`: Là lớp chứa thuộc tính `_callback`, mặc định gán là "create_function", và `_options` chứa mảng tham số. Khi callback này được thực thi trong quá trình xử lý inflector, `create_function` sẽ tạo và thực thi đoạn mã PHP.
 
 Gadget chain sau đó được tổng hợp thành một chuỗi được tuần tự hóa (serialized string) theo định dạng của hàm `serialize()` trong PHP:
 ```php
@@ -280,7 +281,7 @@ Tổng quát quá trình thực thi:
   
 - Writer này lại xử lý layout để format nội dung email, và thông qua chuỗi phụ thuộc (`Zend_Layout → Zend_Filter_Inflector → Zend_Filter_Callback`) sẽ gọi `create_function()` chứa lệnh muốn thực thi.
 
-- Nếu mã này là `system("start calc")`, máy chủ sẽ thực thi lệnh mở calculator.
+- Nếu mã này là `system("start calc")`, máy chủ sẽ thực thi lệnh mở `calculator`.
 
 - Chuỗi thực hiện:
 ```
@@ -380,7 +381,7 @@ Payload được nhập sẽ được giải tuần tự thông qua hàm `unseri
     <p align="center"><em>$processedPart</em></p>
 </p>
   
-- Sau đó từ `$ruleFilter` gọi đến `filter($processedPart)`, mà lúc này `$ruleFilter` đang là một đối tượng của Zend_Filter_Callback, vì vậy `Zend_Filter_Callback::filter()` được gọi với giá trị đầu vào là biến `$processedPart` (hay lúc này đang có giá trị là `){}system("start calc");/*`)
+- Sau đó từ `$ruleFilter` gọi đến `filter($processedPart)`, mà lúc này `$ruleFilter` đang là một đối tượng của `Zend_Filter_Callback`, vì vậy `Zend_Filter_Callback::filter()` được gọi với giá trị đầu vào là biến `$processedPart` (hay lúc này đang có giá trị là `){}system("start calc");/*`)
 
 <p align="center">
 <img src="https://github.com/gnaohuv/zend-demo-php-deserialization/blob/main/images/Debug_fillter2.png?raw=true" width="800"/>
