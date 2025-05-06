@@ -19,7 +19,7 @@
 ## 1. Giới thiệu chung
 `Insecure Unserialization` hay `Object Injection` là một lỗ hổng phổ biến trong PHP, xảy ra khi dữ liệu không đáng tin cậy được truyền trực tiếp vào hàm `unserialize()` mà không có kiểm soát hoặc xác thực. Khi đó, kẻ tấn công có thể chèn vào chuỗi dữ liệu các đối tượng được thiết kế đặc biệt `(gadget)` để khai thác các `magic method` như `__wakeup()` hay `__destruct()`, từ đó dẫn đến thực thi mã tùy ý `(RCE – Remote Code Execution)`.
 
-Một ví dụ điển hình là lỗ hổng từng tồn tại trong `Zend Framework` (trước phiên bản `1.12.21`), nơi mà một số class trong framework có thể bị lợi dụng để xây dựng `gadget chain`, tạo điều kiện cho tấn công khi dữ liệu đầu vào bị `unserialize` một cách không an toàn.
+Một ví dụ điển hình là lỗ hổng từng tồn tại trong `Zend Framework` (trước phiên bản `1.12.20`), nơi mà một số class trong framework có thể bị lợi dụng để xây dựng `gadget chain`, tạo điều kiện cho tấn công khi dữ liệu đầu vào bị `unserialize` một cách không an toàn.
 
 Mục tiêu của project này là mô phỏng lại quá trình khai thác thông qua việc xây dựng một webpage mẫu chứa lỗ hổng trên `Zend Framework`, tạo payload bằng công cụ `phpggc`, debug theo luồng `gadget chain`, và cuối cùng là phân tích cũng như đưa ra một số cách phòng chống hiệu quả lỗ hổng này trong thực tế phát triển phần mềm.
 ## 2. Tổng quan về lỗ hổng Insecure Unserialization trên PHP
@@ -40,7 +40,7 @@ Các lỗ hổng này thường rất nguy hiểm do chúng khó bị phát hi�
 ## 3. Tổng quan về Zend Framework
 `Zend Framework` là một framework mã nguồn mở mạnh mẽ và phổ biến được dùng để xây dựng các ứng dụng web PHP theo kiến trúc MVC (Model–View–Controller). Với thiết kế hướng đối tượng và hỗ trợ mở rộng, Zend cung cấp nhiều class tiện ích cho việc xử lý log, email, cấu hình, layout,...Tuy nhiên, chính sự đa dạng và phức tạp này cũng tạo điều kiện cho việc hình thành các `gadget chain` nếu không kiểm soát cẩn thận việc tuần tự hóa đối tượng.
 
-Trước phiên bản `1.12.21`, `Zend Framework` tồn tại các lớp như:
+Trước phiên bản `1.12.20`, `Zend Framework` tồn tại các lớp như:
 
 `Zend_Log`: hỗ trợ ghi log linh hoạt.
 
@@ -52,7 +52,7 @@ Trước phiên bản `1.12.21`, `Zend Framework` tồn tại các lớp như:
 
 Các lớp này có thể bị xâu chuỗi lại với nhau nhờ các phương thức `__destruct()`, `__call()` và `__toString()` để tạo thành một gadget chain nguy hiểm, cho phép kẻ tấn công lợi dụng để thực thi lệnh hệ thống thông qua `unserialize`.
 
-Zend sau đó đã phát hành bản vá trong phiên bản `1.12.21`, loại bỏ hoặc điều chỉnh các hành vi nguy hiểm trong các `magic method`, đồng thời khuyến cáo không nên `unserialize` dữ liệu không đáng tin cậy.
+Zend sau đó đã phát hành bản vá trong phiên bản `1.12.20`, loại bỏ hoặc điều chỉnh các hành vi nguy hiểm trong các `magic method`, đồng thời khuyến cáo không nên `unserialize` dữ liệu không đáng tin cậy.
 ## 4. Xây dựng webpage chứa lỗ hổng
 ### 4.1. Mục tiêu
 Xây dựng một webpage sử dụng `Zend Framework` chứa đoạn mã có đối tượng được `unserialize()` mà không qua xác thực. Sau đó tiến hành khai thác lỗ hổng `Insecure Unserialization` trên trang web này sử dụng payload tạo từ công cụ `phpggc`.
